@@ -88,7 +88,10 @@ for(const button of document.querySelectorAll('[data-key]')){
   button.addEventListener('pointerdown',e=>{button.setPointerCapture(e.pointerId);keys.add(button.dataset.key);});
   for(const name of ['pointerup','pointercancel','lostpointercapture']) button.addEventListener(name,()=>keys.delete(button.dataset.key));
 }
-let orbit=.25,elevation=.015,drag=null;
+const referenceOrbit=.24;
+let orbit=referenceOrbit,elevation=-.075,drag=null;
+let referencePose=true;
+const poseButton=document.querySelector('#reference-pose');
 canvas.addEventListener('pointerdown',e=>{
   if(drag) return;
   canvas.setPointerCapture(e.pointerId);
@@ -104,14 +107,28 @@ canvas.addEventListener('pointermove',e=>{
 for(const name of ['pointerup','pointercancel','lostpointercapture']){
   canvas.addEventListener(name,e=>{if(drag?.id===e.pointerId) drag=null;});
 }
-document.querySelector('#reset').onclick=()=>{orbit=.25;elevation=.015;player.position.set(0,0,0);player.rotation.y=0;document.activeElement.blur();};
+function resetView(){
+  orbit=referenceOrbit;
+  elevation=referencePose?-.075:.015;
+  player.position.set(0,0,0);
+  player.rotation.y=0;
+  phase=0;
+  gait=0;
+  document.activeElement.blur();
+}
+document.querySelector('#reset').onclick=resetView;
+poseButton.onclick=()=>{
+  referencePose=!referencePose;
+  poseButton.setAttribute('aria-pressed',String(referencePose));
+  resetView();
+};
 document.querySelector('#coat').onchange=e=>{jacketMesh.material.color.set(e.target.value);e.target.blur();};
 document.querySelector('#jaw').oninput=e=>{setJaw(Number(e.target.value));};
 document.querySelector('#expression').onchange=e=>{for(const [name,obj] of Object.entries(expressions)) obj.visible=name===e.target.value;e.target.blur();};
 
 const clock=new T.Clock();
 const target=new T.Vector3();
-let phase=0, gait=0;
+let phase=0, gait=0, poseBlend=1;
 renderer.setAnimationLoop(()=>{
   const dt=Math.min(clock.getDelta(),.04);
   const width=canvas.clientWidth,height=canvas.clientHeight;
@@ -126,6 +143,10 @@ renderer.setAnimationLoop(()=>{
   const moving=x!==0||z!==0;
   const running=moving&&keys.has('shift');
   if(moving){
+    if(referencePose){
+      referencePose=false;
+      poseButton.setAttribute('aria-pressed','false');
+    }
     const angle=Math.atan2(x,z)+orbit;
     const velocity=running?2.85:1.55;
     player.position.x=T.MathUtils.clamp(player.position.x+Math.sin(angle)*dt*velocity,-4.5,5.4);
@@ -136,37 +157,43 @@ renderer.setAnimationLoop(()=>{
   gait=T.MathUtils.damp(gait,moving?(running?1.28:1):0,11,dt);
   if(moving) phase+=dt*(running?10.5:7.3);
   const swing=Math.sin(phase);
-  const hipDrop=gait*(running?.095:.058);
+  poseBlend=T.MathUtils.damp(poseBlend,referencePose?1:0,13,dt);
+  const mix=(a,b)=>T.MathUtils.lerp(a,b,poseBlend);
+  const hipDrop=mix(gait*(running?.075:.043),.079);
   hips.position.y=-hipDrop;
-  chest.rotation.y=.048*gait*swing;
-  head.rotation.z=-.102-.022*gait*swing;
-  head.rotation.y=.39;
-  head.rotation.x=.105;
-  // Solve each leg to a planted stance or a low swing. A positive knee
-  // rotation bends the calf back, and the shoe stays level on contact.
+  chest.rotation.y=mix(.048*gait*swing,.11);
+  chest.rotation.z=mix(0,-.036);
+  head.rotation.z=mix(-.07-.022*gait*swing,-.117);
+  head.rotation.y=mix(.245,.46);
+  head.rotation.x=mix(.06,.163);
+  // The same knee solver is used for the display pose and the moving stride.
+  const upper=.668,lower=.629;
   for(const {thigh,shin,foot,s} of legs){
-    const cycle=(phase/(Math.PI*2)+(s>0?.5:0))%1;
-    const stance=.58;
-    const step=gait*(running?.50:.37);
+    const cycle=(phase/(2*Math.PI)+(s>0?.5:0))%1;
+    const stance=.61;
+    const step=gait*(running?.47:.40);
     const progress=cycle<stance?cycle/stance:(cycle-stance)/(1-stance);
     const swingProgress=progress*progress*(3-2*progress);
-    const z=cycle<stance?step*(1-2*progress):step*(2*swingProgress-1);
-    const lift=cycle<stance?0:Math.sin(Math.PI*progress)**1.5*.155*gait;
-    const down=1.297-hipDrop-lift;
-    const upper=.668,lower=.629;
+    const travel=cycle<stance?step*(1-2*progress):step*(2*swingProgress-1);
+    const lift=cycle<stance?0:Math.sin(Math.PI*progress)**1.5*.133*gait;
+    const z=mix(travel,s<0?.405:-.336);
+    const down=upper+lower-hipDrop-mix(lift,s<0?0:.024);
     const reach=Math.min(upper+lower,Math.hypot(z,down));
     const knee=Math.acos(T.MathUtils.clamp((reach*reach-upper*upper-lower*lower)/(2*upper*lower),-1,1));
     const pitch=Math.atan2(-z,down)-Math.atan2(lower*Math.sin(knee),upper+lower*Math.cos(knee));
     thigh.rotation.x=pitch;
+    thigh.rotation.z=mix(0,s<0?-.035:-.085);
     shin.rotation.x=knee;
-    foot.rotation.x=-(pitch+knee);
+    foot.rotation.x=-(pitch+knee)+mix(0,s<0?0:.105);
+    foot.rotation.z=-thigh.rotation.z;
   }
   for(const {shoulder,elbow,wrist,s} of arms){
-    shoulder.rotation.x=-s*swing*.22*gait;
-    shoulder.rotation.z=-s*(.035+(s<0?.07:0)*(1-Math.min(gait,1)));
-    elbow.rotation.x=-.13-gait*(.10+.09*s*swing);
-    elbow.rotation.z=-s*(s<0?.17:.075)*(1-Math.min(gait*.65,1));
-    wrist.rotation.z=-s*.05;
+    shoulder.rotation.x=mix(-s*swing*.22*gait,s<0?.018:.24);
+    shoulder.rotation.z=mix(-s*(.035+(s<0?.07:0)*(1-Math.min(gait,1))),s<0?-.175:.56);
+    elbow.rotation.x=mix(-.13-gait*(.10+.09*s*swing),s<0?-.56:-.20);
+    elbow.rotation.z=mix(-s*(s<0?.17:.075)*(1-Math.min(gait*.65,1)),s<0?.69:-.53);
+    wrist.rotation.x=mix(0,s<0?.12:.16);
+    wrist.rotation.z=mix(-s*.05,s<0?.04:-.18);
   }
   shadow.position.x=player.position.x;
   shadow.position.z=player.position.z;
@@ -177,6 +204,6 @@ renderer.setAnimationLoop(()=>{
   storefront.visible=camera.position.x > -5.10;
   skyline.visible=camera.position.z > -11.90;
   camera.lookAt(target);
-  status.textContent=running?'Running':moving?'Walking':'Ready to walk';
+  status.textContent=running?'Running':moving?'Walking':referencePose?'Reference pose':'Ready to walk';
   renderer.render(scene,camera);
 });

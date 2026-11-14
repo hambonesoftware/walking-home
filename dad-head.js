@@ -44,7 +44,7 @@ export function createDadHead(T, { toon, ink }) {
   ];
   // height, half-width, front, rear, center-depth and central nose projection
   const skullRings = [
-    [.009, .076, .073, .074, .029, 0],
+    [.009, .064, .073, .074, .029, 0],
     [.032, .115, .122, .106, .018, 0],
     [.072, .142, .136, .134, .006, 0],
     [.111, .157, .144, .144, .002, 0],
@@ -171,15 +171,15 @@ export function createDadHead(T, { toon, ink }) {
       [x+.034,y-.003],[x+.019,y-.008],[x-.010,y-.009],[x-.027,y-.007]
     ];
     mark(face, 'Almond eye', eye, sclera, .002);
-    mark(face, 'Brown iris', oval(x+.015,y-.003,.009,.007), iris, .003);
-    mark(face, 'Pupil', oval(x+.015,y-.004,.0055,.006), pupil, .004);
-    mark(face, 'Eye catchlight', oval(x+.013,y-.002,.0018,.0018), catchlight, .0048);
+    mark(face, 'Brown iris', oval(x+.017,y-.005,.009,.007), iris, .003);
+    mark(face, 'Pupil', oval(x+.017,y-.006,.0055,.006), pupil, .004);
+    mark(face, 'Eye catchlight', oval(x+.014,y-.004,.0018,.0018), catchlight, .0048);
     mark(face, 'Tapered upper eyelid', [
       eye[0], ...eye.slice(1,5), [x+.025,y+.006],[x+.004,y+.011],[x-.023,y+.010]
     ], liner, .0044);
 
     const brow = [
-      [x-.043,y+.020],[x-.029,y+.031],[x+.008,y+.032],[x+.038,y+.023],
+      [x-.043,y+.020],[x-.029,y+.037],[x+.008,y+.037],[x+.038,y+.023],
       [x+.045,y+.017],[x+.019,y+.021],[x-.011,y+.022]
     ];
     mark(expressions.smile, 'Angled brow', brow, liner);
@@ -193,7 +193,7 @@ export function createDadHead(T, { toon, ink }) {
   ], cheekGlaze, .0016);
   mark(face, 'Nose shadow', [[-.025,.158],[-.015,.161],[-.006,.156],[.014,.152],[.027,.156],[.022,.150],[.007,.148],[-.010,.152]], crease, .0017);
   mark(expressions.smile, 'Asymmetric smile', [
-    [-.062,.114],[-.039,.111],[-.016,.105],[.019,.105],[.046,.110],[.064,.122],
+    [-.062,.114],[-.039,.111],[-.016,.105],[.019,.105],[.046,.112],[.064,.125],
     [.053,.111],[.033,.103],[.008,.100],[-.020,.102],[-.047,.109]
   ], liner, .0024);
   mark(expressions.smile, 'Lower lip', [[-.028,.094],[.005,.092],[.031,.094],[.020,.087],[.002,.085],[-.018,.088]], lips, .0022);
