@@ -52,18 +52,22 @@ const seam=ink('#353447');
 for(let x=-6;x<=6;x+=2) box(scene,x,-.009,0,.018,.003,23.8,seam);
 for(let z=-11;z<12;z+=2) box(scene,0,-.008,z,13.9,.003,.018,seam);
 const amber=ink('#d99555'), frame=toon('#352a37'), stone=toon('#493642');
-box(scene,-5.7,2.55,0,.6,5.1,24,stone);
+const storefront = new T.Group();
+scene.add(storefront);
+box(storefront,-5.7,2.55,0,.6,5.1,24,stone);
 for(let z=-10;z<=10;z+=3){
-  box(scene,-5.35,1.94,z,.09,2.85,2.7,amber);
-  for(const y of [.52,1.45,2.35,3.35]) box(scene,-5.26,y,z,.13,.07,2.75,frame);
-  for(const dz of [-1.36,0,1.36]) box(scene,-5.24,1.94,z+dz,.13,2.85,.07,frame);
+  box(storefront,-5.35,1.94,z,.09,2.85,2.7,amber);
+  for(const y of [.52,1.45,2.35,3.35]) box(storefront,-5.26,y,z,.13,.07,2.75,frame);
+  for(const dz of [-1.36,0,1.36]) box(storefront,-5.24,1.94,z+dz,.13,2.85,.07,frame);
 }
+const skyline = new T.Group();
+scene.add(skyline);
 for(let i=0;i<16;i++){
   const x=-13+i*1.72;
   const h=3.5+((i*67)%49)/10;
-  box(scene,x,h/2,-13-i%3,1.55,h,2,ink(i%2?'#19243a':'#1c283e'));
+  box(skyline,x,h/2,-13-i%3,1.55,h,2,ink(i%2?'#19243a':'#1c283e'));
   for(let row=1;row<h-1;row+=.7) if((i+Math.round(row*10))%3!==0)
-    box(scene,x+.27,row,-11.98-i%3,.1,.24,.03,ink('#a87962'));
+    box(skyline,x+.27,row,-11.98-i%3,.1,.24,.03,ink('#a87962'));
 }
 const shadow=mesh(scene,new T.CircleGeometry(.48,36),new T.MeshBasicMaterial({color:'#141928',transparent:true,opacity:.5,depthWrite:false}));
 shadow.rotation.x=-Math.PI/2;
@@ -169,6 +173,9 @@ renderer.setAnimationLoop(()=>{
   target.set(player.position.x,1.40,player.position.z);
   const radius=Math.max(width<650?6.6:5.6, 3.6/camera.aspect);
   camera.position.set(target.x+Math.sin(orbit)*radius,target.y+.56+elevation*radius,target.z+Math.cos(orbit)*radius);
+  // Hide foreground scenery if the orbit places the camera behind it.
+  storefront.visible=camera.position.x > -5.10;
+  skyline.visible=camera.position.z > -11.90;
   camera.lookAt(target);
   status.textContent=running?'Running':moving?'Walking':'Ready to walk';
   renderer.render(scene,camera);
